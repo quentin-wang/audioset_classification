@@ -103,22 +103,6 @@ def tf_evaluate(target, output, stats_dir, probs_dir, iteration, labels_map):
     return mAP, mAUC, [stat['AP'] for stat in stats]
 
 
-# def rplot(x_labels, y1_count, y2_precision):
-#     mpl.rc('xtick', labelsize=20)
-#     mpl.rc('ytick', labelsize=20) 
-
-#     fig=plt.figure(figsize=(20,10))
-#     plt.xticks(rotation=90)
-#     ax1=fig.add_subplot(111)
-#     ax1.bar(x_labels, y1_count, linewidth=2)
-#     # ax1.semilogy()
-#     # plt.ylim( [0, 10000] )
-
-#     ax2 = ax1.twinx()
-#     ax2.scatter(x_labels, y2_precision, c='r', linewidths=10)
-#     plt.savefig('result.jpg')
-
-
 def train(args):
 
     data_dir = args.data_dir
@@ -133,7 +117,6 @@ def train(args):
     batch_size = args.batch_size
 
     hvd.init()
-    print('hvd.init() ok')
 
     # # Load test data.
     df = pd.read_csv(vp.FILE_CLASS_LABELS)
@@ -216,7 +199,7 @@ def train(args):
                 print(ii, item)
                 raise Exception('False item, no positive label.')
 
-        test_x_mfcc, test_y_mfcc, test_seq_len = tasksmq.batch_wav_to_mfcc_parallel(test_x, test_y, agumentation=False)           # test_seq_len = np.ones(len(test_x_mfcc)) * 240     # length array of the batch
+        # test_x_mfcc, test_y_mfcc, test_seq_len = tasksmq.batch_wav_to_mfcc_parallel(test_x, test_y, agumentation=False)           # test_seq_len = np.ones(len(test_x_mfcc)) * 240     # length array of the batch
 
         logging.info("Loading data time: {:.3f} s".format(time.time() - load_time))
 

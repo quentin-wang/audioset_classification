@@ -149,9 +149,9 @@ def build_crnn_model(is_training=tf.contrib.learn.ModeKeys.TRAIN):
 
         net = slim.conv2d(net, 256, scope='conv5')
         net = slim.max_pool2d(net, kernel_size=[1, 4], stride=[1, 4], scope='pool5')     # (N, 240, 1, 256)
-        # print('netslim', net.shape)
 
-        net = tf.reshape(net, [-1, 240, 256])   # TODO: 使用 收缩的接口        # net = tf.squeeze(net)   # <unkown> ??
+        net = tf.squeeze(net, axis=2)           # net = tf.reshape(net, [-1, 240, 256])   # TODO: 使用 收缩的接口
+        print('net before RNN:', net.shape)
 
         n_hidden = 128
         vocab_size = 527

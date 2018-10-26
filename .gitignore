@@ -1,0 +1,8 @@
+checkpoints/
+tblogs/
+work/
+__pycache__/
+
+# file
+*.note.*
+
