@@ -10,6 +10,7 @@ from sklearn import metrics
 from utils import utilities, data_generator
 import core
 import inference_rt
+import transfer_learning
 
 # import keras
 # from keras.models import Model
@@ -73,6 +74,7 @@ if __name__ == '__main__':
     parser_train = subparsers.add_parser('train')
     parser_get_avg_stats = subparsers.add_parser('get_avg_stats')
     parser_inference = subparsers.add_parser('inference_rt')
+    parser_train = subparsers.add_parser('transfer')
 
     args = parser.parse_args()
 
@@ -88,6 +90,10 @@ if __name__ == '__main__':
 
     if args.mode == "train":
         train(args)
+
+    elif args.mode == 'transfer':
+        args.batch_size = vp.BATCH_SIZE
+        transfer_learning.train(args)
 
     elif args.mode == 'get_avg_stats':
         args.bgn_iteration = 10000

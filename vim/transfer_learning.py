@@ -30,7 +30,7 @@ except BaseException:
     import _pickle as cPickle
 
 import pika
-import tasksmq
+import tasksmq_transfer as tasksmq
 import vim_params as vp
 import numpy as np
 
@@ -110,7 +110,7 @@ def train(args):
     mini_data = args.mini_data
     quantize = args.quantize
     balance_type = args.balance_type
-    init_learning_rate = args.learning_rate
+    init_learning_rate = args.learning_rate           # transfer learning rate
     filename = args.filename
     model_type = args.model_type
     # model = args.model
@@ -121,8 +121,8 @@ def train(args):
     # # Load test data.
     df = pd.read_csv(vp.FILE_CLASS_LABELS)
     labels_dict = {}
-    labels_dict['name'] = np.array(df[df['train'] == 1]['display_name'])
-    labels_dict['id'] = np.array(df[df['train'] == 1]['index'])
+    labels_dict['name'] = np.array(df[df['transfer'] == 1]['display_name'])
+    labels_dict['id'] = np.array(df[df['transfer'] == 1]['index'])
     labels_dict['count'] = []
 
     labels_map_mask = [False] * vp.TOTAL_NUM_CLASS
@@ -251,8 +251,7 @@ def train(args):
 
     # Add training ops.
     with tf.variable_scope('train'):
-        global_step = tf.train.get_or_create_global_step()
-        # global_step = tf.Variable(0, name='global_step', trainable=False, dtype=tf.int32)
+        global_step = tf.train.get_or_create_global_step()    # global_step = tf.Variable(0, name='global_step', trainable=False, dtype=tf.int32)
 
         labels = tf.placeholder(
             tf.float32, shape=(None, vp.TOTAL_NUM_CLASS), name='labels')
@@ -271,7 +270,10 @@ def train(args):
             epsilon=vggish_params.ADAM_EPSILON)
         opt = hvd.DistributedOptimizer(opt)
 
-        opt.minimize(loss_tensor, global_step=global_step, name='train_op')   
+        trainable_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+        var_list = [v for v in trainable_vars if 'rnn' in v.name or 'gru' in v.name]
+
+        opt.minimize(loss_tensor, global_step=global_step, name='train_op', var_list=var_list)
 
     #    ----- tensorboard-------
     tf.summary.scalar('loss', loss_tensor)    # do not needed. summary_op = tf.summary.merge_all()
@@ -297,9 +299,12 @@ def train(args):
     config.gpu_options.allow_growth = True
     config.gpu_options.visible_device_list = str(hvd.local_rank())
 
-    checkpoint_dir = './checkpoints' if hvd.rank() == 0 else None
-    result_queue = 'result_queue1' if hvd.rank() == 0 else 'result_queue2'
+    checkpoint_dir = './checkpoints_transfer' if hvd.rank() == 0 else None
+    result_queue = 'result_queue'
     scaffold = tf.train.Scaffold(saver=tf.train.Saver(max_to_keep=20))
+
+    restart = 1
+    reinit_global_step = global_step.assign(3000)
 
     # The MonitoredTrainingSession takes care of session initialization,
     # restoring from a checkpoint, saving to a checkpoint, and closing when done
@@ -333,8 +338,7 @@ def train(args):
             while not sess.should_stop():
                 method_frame, header_frame, body = channel.basic_get(queue=result_queue)      # consumer
                 if method_frame:
-                    # print(method_frame, header_frame)
-                    print(method_frame)
+                    # print(method_frame)
                     batch_x_mfcc, batch_y_mfcc, batch_seq_len = cPickle.loads(body)   # print(batch_x_mfcc.shape)      # print(batch_y_mfcc.shape)
                     channel.basic_ack(method_frame.delivery_tag)
 
@@ -348,11 +352,20 @@ def train(args):
                             channel.basic_ack(method_frame.delivery_tag)
 
                 # train
-                [num_steps, loss, _] = sess.run([global_step_tensor, loss_tensor, train_op],
-                        feed_dict={ features_tensor: batch_x_mfcc, 
-                                    labels_tensor: batch_y_mfcc, 
-                                    sequence_length: batch_seq_len})
-                # print(num_steps,':', loss)
+                if restart:
+                    restart = 0
+                    [num_steps, loss, lr, _] = sess.run([reinit_global_step, loss_tensor, learning_rate, train_op],
+                            feed_dict={ features_tensor: batch_x_mfcc, 
+                                        labels_tensor: batch_y_mfcc, 
+                                        sequence_length: batch_seq_len})
+                else:
+                    [num_steps, loss, lr, _] = sess.run([global_step_tensor, loss_tensor, learning_rate, train_op],
+                            feed_dict={ features_tensor: batch_x_mfcc, 
+                                        labels_tensor: batch_y_mfcc, 
+                                        sequence_length: batch_seq_len})
+
+                if num_steps % 10 == 0:
+                    print('steps: ', num_steps, 'loss: ', loss, 'lr: ', lr)
 
                 # evaluate
                 if (num_steps != 0) and (num_steps % 1000 == 0) and (hvd.rank() == 0):

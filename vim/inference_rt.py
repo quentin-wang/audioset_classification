@@ -28,7 +28,7 @@ try:
 except BaseException:
     import _pickle as cPickle
 
-import tasksmq
+# import tasksmq
 
 labels = ['Speech', 'Male_speechAND_man_speaking', 'Female_speechAND_woman_speaking'
 , 'Child_speechAND_kid_speaking', 'Conversation', 'NarrationAND_monologue'
@@ -148,11 +148,11 @@ labels = ['Speech', 'Male_speechAND_man_speaking', 'Female_speechAND_woman_speak
 , 'Throbbing', 'Vibration', 'Television', 'Radio', 'Field_recording']
 
 _TOTAL_NUM_CLASS = 527
-__FILE_CLASS_LABELS = '../audiosetdl/class_labels_indices-train.csv'
+__FILE_CLASS_LABELS = '../audiosetdl/class_labels_indices.csv'
 # MODEL_PATH = 'work/models/main/balance_type=balance_in_batch/model_type=decision_level_average_pooling/'
-MODEL_PATH = 'checkpoints/'
-meta_path = MODEL_PATH + 'model.ckpt-{}.meta'.format(10000)
-model_path = MODEL_PATH + 'model.ckpt-{}'.format(10000)
+MODEL_PATH = 'checkpoints_transfer/'
+meta_path = MODEL_PATH + 'model.ckpt-{}.meta'.format(16000)
+model_path = MODEL_PATH + 'model.ckpt-{}'.format(16000)
 
 _DURATION = 3   # seconds
 

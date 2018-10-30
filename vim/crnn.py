@@ -85,10 +85,10 @@ slim = tf.contrib.slim
 
 # dynamic_rnn
 def RNN(x, w, b, n_hidden, seq=None):
-    cell =tf.nn.rnn_cell.BasicLSTMCell(n_hidden)
+    cell =tf.nn.rnn_cell.GRUCell(n_hidden)
     cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=0.5)
     _, states =tf.nn.dynamic_rnn(cell, x, sequence_length=seq, dtype=tf.float32)
-    out = tf.matmul(states.h, w['out']) + b['out']     # [N, 527]
+    out = tf.matmul(states, w['out']) + b['out']     # [N, 527]
     return out
 
 # static_rnn
