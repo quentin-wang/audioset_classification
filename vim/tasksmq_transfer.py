@@ -122,8 +122,8 @@ if __name__ == '__main__':
 
     df = pd.read_csv(vp.FILE_CLASS_LABELS)
     labels_dict = {}
-    labels_dict['name'] = np.array(df[df['transfer'] == 1]['display_name'])
-    labels_dict['id'] = np.array(df[df['transfer'] == 1]['index'])
+    labels_dict['name'] = np.array(df[df['train'] == 1]['display_name'])
+    labels_dict['id'] = np.array(df[df['train'] == 1]['index'])
     labels_dict['count'] = []
 
     train_x = []

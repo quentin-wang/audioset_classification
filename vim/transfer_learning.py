@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import os
 import sys
 sys.path.insert(1, os.path.join(sys.path[0], '../'))
@@ -33,6 +35,14 @@ import pika
 import tasksmq_transfer as tasksmq
 import vim_params as vp
 import numpy as np
+
+# 合并不感兴趣的类别
+def labels_merge(y, mask, unmask):
+    product = np.dot(y, unmask)
+    if product.any():   # 包含不感兴趣的类别，环境类别
+        y = np.dot(y, mask)     # 只保留感兴趣的类别
+        y [0] = True            # 并设置 speech 类别为True
+    return y
 
 # less than 1.0, improve precision
 # larger than 1.0. improve recall.
@@ -128,6 +138,9 @@ def train(args):
     labels_map_mask = [False] * vp.TOTAL_NUM_CLASS
     for x in labels_dict['id']:
         labels_map_mask[x] = True
+    
+    # 感兴趣的类别设置为False
+    labels_map_uumask = [ not item for item in labels_map_mask] # [True True True .... False (interesting sound) ... True True]
 
     if (hvd.rank() == 0):
         # Load data
@@ -345,6 +358,8 @@ def train(args):
                     if len(batch_x_mfcc) != batch_size:
                         continue
                     
+                    batch_y_mfcc = labels_merge(batch_y_mfcc, labels_map_mask, labels_map_uumask)
+
                     if method_frame.message_count > 400:         # consumer can't process too much messages.
                         print('result_queue has too much msgs, clip them.')
                         for _ in range(100):

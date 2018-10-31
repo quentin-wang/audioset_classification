@@ -28,9 +28,8 @@ try:
 except BaseException:
     import _pickle as cPickle
 
-# import tasksmq
-
-labels = ['Speech', 'Male_speechAND_man_speaking', 'Female_speechAND_woman_speaking'
+# Environment replace Speech
+labels = ['Environment', 'Male_speechAND_man_speaking', 'Female_speechAND_woman_speaking'
 , 'Child_speechAND_kid_speaking', 'Conversation', 'NarrationAND_monologue'
 , 'Babbling', 'Speech_synthesizer', 'Shout', 'Bellow', 'Whoop', 'Yell'
 , 'Battle_cry', 'Children_shouting', 'Screaming', 'Whispering', 'Laughter'
@@ -151,8 +150,8 @@ _TOTAL_NUM_CLASS = 527
 __FILE_CLASS_LABELS = '../audiosetdl/class_labels_indices.csv'
 # MODEL_PATH = 'work/models/main/balance_type=balance_in_batch/model_type=decision_level_average_pooling/'
 MODEL_PATH = 'checkpoints_transfer/'
-meta_path = MODEL_PATH + 'model.ckpt-{}.meta'.format(16000)
-model_path = MODEL_PATH + 'model.ckpt-{}'.format(16000)
+meta_path = MODEL_PATH + 'model.ckpt-{}.meta'.format(40000)
+model_path = MODEL_PATH + 'model.ckpt-{}'.format(40000)
 
 _DURATION = 3   # seconds
 
@@ -162,10 +161,13 @@ def print_prediction(out, mfcclen):
     # print(out[sorted_out[:100]])
 
     for i in range(3):
-        if out[sorted_out[i]] > 0.3:
-            print('{} \t prob: {}'.format(labels[sorted_out[i]], out[sorted_out[i]]))
+        prob = out[sorted_out[i]]
+        if prob > 0.8 and (sorted_out[i] != 0):
+            print("\033[1;32;40m{} \t prob: {}\033[0m".format (labels[sorted_out[i]], prob))
+        elif prob > 0.3:
+            print('{} \t prob: {}'.format(labels[sorted_out[i]], prob))
 
-    print('')
+    # print('')
 
 def get_name_list(audio_path):
     result = []
@@ -230,7 +232,7 @@ def core(args):
         _960ms = []
         while True:
             _960ms = q.get()
-            print(q.qsize())
+            # print(q.qsize())
             while q.qsize() > 0:
                 _960ms = q.get()
 
