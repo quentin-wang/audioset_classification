@@ -3,6 +3,7 @@ import pika
 import sys
 import numpy as np
 import pickle
+import vim_params as vp
 
 credentials = pika.PlainCredentials('myuser', 'mypassword')
 
@@ -12,19 +13,14 @@ with pika.BlockingConnection(
 
     # connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
-    q = channel.queue_declare(queue='task_queue', durable=True)
+    q = channel.queue_declare(queue=vp.path_q, durable=True)
     q_len = q.method.message_count
-    print('task_queue q_len {}'.format(q_len))
+    print('path_q q_len {}'.format(q_len))
 
-    q = channel.queue_declare(queue='result_queue1', durable=True)
+    q = channel.queue_declare(queue=vp.logmel_q, durable=True)
     q_len = q.method.message_count
-    print('result_queue1 q_len {}'.format(q_len))
+    print('logmel_q q_len {}'.format(q_len))
 
-    q = channel.queue_declare(queue='result_queue2', durable=True)
-    q_len = q.method.message_count
-    print('result_queue2 q_len {}'.format(q_len))
-
-    channel.queue_delete(queue='task_queue')
-    channel.queue_delete(queue='result_queue1')
-    channel.queue_delete(queue='result_queue2')
-    print('del task_queue & result_queue')
+    channel.queue_delete(queue=vp.path_q)
+    channel.queue_delete(queue=vp.logmel_q)
+    print('del queue')

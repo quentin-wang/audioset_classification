@@ -132,25 +132,25 @@ def build_crnn_model(is_training=tf.contrib.learn.ModeKeys.TRAIN):
             tf.variable_scope('vggish'):
         # Input: a batch of 2-D log-mel-spectrogram patches.
         features = tf.placeholder(tf.float32, shape=(None, params.NUM_FRAMES, params.NUM_BANDS),
-                name='input_features')      # (N, 240, 64)
+                name='input_features')      # (N, SEQ_LEN, 64)
         sequence_length = tf.placeholder(tf.int32, shape=[None], name='input_sequence_length') # (N)
 
-        net = tf.reshape(features, [-1, params.NUM_FRAMES, params.NUM_BANDS, 1])    # [N, 240, 64, 1]
+        net = tf.reshape(features, [-1, params.NUM_FRAMES, params.NUM_BANDS, 1])    # [N, SEQ_LEN, 64, 1]
 
         # The VGG stack of alternating convolutions and max-pools.
-        net = slim.repeat(net, 2, slim.conv2d, 128, scope='conv1')                  # (N, 240, 64, 128)
-        net = slim.max_pool2d(net, scope='pool1')                                   # (N, 240, 32, 128)
-        net = slim.repeat(net, 2, slim.conv2d, 128, scope='conv2')                  # (N, 240, 32, 128)
-        net = slim.max_pool2d(net, scope='pool2')                                   # (N, 240, 16, 128)
-        net = slim.repeat(net, 2, slim.conv2d, 128, scope='conv3')                  # (N, 240, 16, 128)
-        net = slim.max_pool2d(net, scope='pool3')                                   # (N, 240, 8, 128)
-        net = slim.repeat(net, 2, slim.conv2d, 128, scope='conv4')                  # (N, 240, 8, 128)
-        net = slim.max_pool2d(net, scope='pool4')                                   # (N, 240, 4, 128)
+        net = slim.repeat(net, 2, slim.conv2d, 128, scope='conv1')                  # (N, SEQ_LEN, 64, 128)
+        net = slim.max_pool2d(net, scope='pool1')                                   # (N, SEQ_LEN, 32, 128)
+        net = slim.repeat(net, 2, slim.conv2d, 128, scope='conv2')                  # (N, SEQ_LEN, 32, 128)
+        net = slim.max_pool2d(net, scope='pool2')                                   # (N, SEQ_LEN, 16, 128)
+        net = slim.repeat(net, 2, slim.conv2d, 128, scope='conv3')                  # (N, SEQ_LEN, 16, 128)
+        net = slim.max_pool2d(net, scope='pool3')                                   # (N, SEQ_LEN, 8, 128)
+        net = slim.repeat(net, 2, slim.conv2d, 128, scope='conv4')                  # (N, SEQ_LEN, 8, 128)
+        net = slim.max_pool2d(net, scope='pool4')                                   # (N, SEQ_LEN, 4, 128)
 
         net = slim.conv2d(net, 256, scope='conv5')
-        net = slim.max_pool2d(net, kernel_size=[1, 4], stride=[1, 4], scope='pool5')     # (N, 240, 1, 256)
+        net = slim.max_pool2d(net, kernel_size=[1, 4], stride=[1, 4], scope='pool5')     # (N, SEQ_LEN, 1, 256)
 
-        net = tf.squeeze(net, axis=2)           # net = tf.reshape(net, [-1, 240, 256])   # TODO: 使用 收缩的接口
+        net = tf.squeeze(net, axis=2)           # net = tf.reshape(net, [-1, SEQ_LEN, 256])   # TODO: 使用 收缩的接口
         print('net before RNN:', net.shape)
 
         n_hidden = 128

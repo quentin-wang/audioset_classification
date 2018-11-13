@@ -2,6 +2,7 @@
 import sys, os
 import numpy as np
 from pydub import AudioSegment
+import librosa
 import multiprocessing as mp
 
 sys.path.insert(1, os.path.join(sys.path[0], '../'))
@@ -36,20 +37,19 @@ def generate_batch(train_gen, ):
         print('channel = connection.channel()')
 
         for (batch_x, batch_y) in train_gen.generate():
-            q = channel.queue_declare(queue='task_queue', durable=True) # 设置队列为持久化的队列
+            q = channel.queue_declare(queue=vp.path_q, durable=True) # 设置队列为持久化的队列
             message = cPickle.dumps((batch_x, batch_y))
             channel.basic_publish(exchange='',
-                routing_key='task_queue',
+                routing_key=vp.path_q,
                 body=message,
                 properties=pika.BasicProperties(
                     delivery_mode = 2, # 设置消息为持久化的
                             ))
             time.sleep(0.2)
             q_len = q.method.message_count
-            # print('task_queue q_len {}'.format(q_len))
 
             if q_len > 400:
-                print('task_queue runs too fast, sleep.............................')
+                print('path_q runs too fast, sleep.............................')
                 time.sleep(20)
             
 def start_process():
@@ -77,6 +77,7 @@ def batch_wav_to_mfcc_parallel(x, y, agumentation = False):
     print('x_mfcc', x_mfcc.shape)
     return x_mfcc, y, x_len
 
+
 def wav_to_mfcc(ax, agumentation=False):
 
     # sr, wav_data = _wavfile.read(str(ax,'utf-8'))
@@ -100,21 +101,72 @@ def wav_to_mfcc(ax, agumentation=False):
     raw_wav_data = np.frombuffer(wav_data.raw_data, dtype=np.int16)
 
     try:
-        amfcc = mfcc.waveform_to_examples(raw_wav_data / 32768.0, 16000)
+        assert wav_data.frame_rate == vp.feature_sr, 'Bad sample type: %r' % wav_data.frame_rate
+
+        # if vp.feature_sr == 16000:
+        #     amfcc = mfcc.waveform_to_examples(raw_wav_data / 32768.0, wav_data.frame_rate)
+        # elif vp.feature_sr == 44100:
+        amfcc = np.log(librosa.feature.melspectrogram(raw_wav_data / 32768.0, 
+            sr=vp.feature_sr, n_mels=vp.feature_nb_mel_bands, 
+            n_fft=vp.feature_nfft, hop_length=vp.feature_hop_len, 
+            power=vp.feature_power) + vp.feature_log_epsilon)
+        amfcc = amfcc.T
+        # print('amfcc.shape ', amfcc.shape)
+
         alen = amfcc.shape[0]
-        if (alen < 240):
-            # amfcc = np.concatenate((amfcc, amfcc[:(240 - alen)]), axis=0)  # pad zeros
-            amfcc = np.concatenate((amfcc, np.zeros(shape=((240 - alen), amfcc.shape[1]))), axis=0)
+        if (alen < vp.feature_frames):
+            amfcc = np.concatenate((amfcc, np.zeros(shape=((vp.feature_frames - alen), amfcc.shape[1]))), axis=0)
             
-        elif (alen > 240):
-            alen = 240
-            amfcc = amfcc[:240]
+        elif (alen > vp.feature_frames):
+            alen = vp.feature_frames
+            amfcc = amfcc[:vp.feature_frames]
 
     except Exception as e:
         print(axs)
         print('Error while processing audio: {} '.format(e))
 
     return amfcc, alen
+
+
+# def wav_to_mfcc(ax, agumentation=False):
+
+#     # sr, wav_data = _wavfile.read(str(ax,'utf-8'))
+#     # assert sr == 16000, 'Bad sample: {}'.format(sr)
+#     axs = str(ax,'utf-8')
+#     wav_data = AudioSegment.from_wav(axs)
+
+#     if agumentation:
+#         # 50 % to execute white noise
+#         if (np.random.randint(0, 2) == 0):
+#             wav_data = aug.strategy['wn'](wav_data)
+
+#         # 50 % to execute volume
+#         # if (np.random.randint(0, 2) == 0):
+#         #     wav_data = aug.strategy['volume'](wav_data)
+
+#         # 50 % to execute shift
+#         if (np.random.randint(0, 2) == 0):
+#             wav_data = aug.strategy['shift'](wav_data)
+
+#     raw_wav_data = np.frombuffer(wav_data.raw_data, dtype=np.int16)
+
+#     try:
+#         amfcc = mfcc.waveform_to_examples(raw_wav_data / 32768.0, 16000)
+#         alen = amfcc.shape[0]
+#         if (alen < 240):
+#             # amfcc = np.concatenate((amfcc, amfcc[:(240 - alen)]), axis=0)  # pad zeros
+#             amfcc = np.concatenate((amfcc, np.zeros(shape=((240 - alen), amfcc.shape[1]))), axis=0)
+            
+#         elif (alen > 240):
+#             alen = 240
+#             amfcc = amfcc[:240]
+
+#     except Exception as e:
+#         print(axs)
+#         print('Error while processing audio: {} '.format(e))
+
+#     return amfcc, alen
+
 
 if __name__ == '__main__':
     data_dir = vp.DATA_DIR

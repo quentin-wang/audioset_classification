@@ -5,6 +5,7 @@ import time
 import numpy as np
 import pickle
 import tasksmq
+import vim_params as vp
 
 # serial
 def batch_wav_to_mfcc(x, y, agumentation = False):
@@ -25,8 +26,8 @@ def batch_wav_to_mfcc(x, y, agumentation = False):
     x_mfcc = np.array(x_mfcc)    # print(x_mfcc.shape)
     y_mfcc = np.array(y_mfcc)
     len_mfcc = np.array(len_mfcc)
-    # print(x_mfcc.shape)
-    print('.', end='')
+    print(x_mfcc.shape)
+    # print('.', end='')
     sys.stdout.flush()
     return x_mfcc, y_mfcc, len_mfcc
 
@@ -40,7 +41,7 @@ def callback(ch, method, properties, body):
     # print(" [x] Received %r" % body)
     x, y = pickle.loads(body)
     x_mfcc, y_mfcc, len_mfcc = batch_wav_to_mfcc(x, y, agumentation = True)
-    routing_key = 'result_queue1' if (method.delivery_tag % 2) else 'result_queue2'
+    routing_key = vp.logmel_q
     
     if len(x_mfcc.shape) == 3:
         message = pickle.dumps((x_mfcc,y_mfcc,len_mfcc))   
@@ -59,15 +60,14 @@ with pika.BlockingConnection(
 
     channel = connection.channel()
 
-    channel.queue_declare(queue='task_queue', durable=True)  # 设置队列持久化
-    channel.queue_declare(queue='result_queue1', durable=True) # 设置队列为持久化的队列
-    channel.queue_declare(queue='result_queue2', durable=True) # 设置队列为持久化的队列
+    channel.queue_declare(queue=vp.path_q, durable=True)  # 设置队列持久化
+    channel.queue_declare(queue=vp.logmel_q, durable=True) # 设置队列为持久化的队列
 
     print(' [*] Waiting for messages. To exit press CTRL+C')
 
     channel.basic_qos(prefetch_count=1)   # 消息未处理完前不要发送信息的消息
     channel.basic_consume(callback,
-                        queue='task_queue')
+                        queue=vp.path_q)
 
     channel.start_consuming()
 

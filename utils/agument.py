@@ -67,8 +67,8 @@ class Agumentation(object):
         wav_data_int = np.frombuffer(wav_data.raw_data, dtype=np.int16)    # bytes to np.array
         wn = np.random.randint(-NOISE_POWER, NOISE_POWER, size=len(wav_data_int)).astype(np.int16)
         return AudioSegment(data = bytes(wav_data_int + wn),  \
-                            sample_width=2, frame_rate=16000, \
-                            channels=1)
+                            sample_width=wav_data.sample_width, frame_rate=wav_data.frame_rate, \
+                            channels=wav_data.channels)
     # Volume tuning
     def volume(self, wav_data):
         return wav_data + np.random.randint(-5, 5)
@@ -76,11 +76,11 @@ class Agumentation(object):
     # Shift tuning
     def shift_sound(self, wav_data):
         wav_data_int = np.frombuffer(wav_data.raw_data, dtype=np.int16)    # bytes to np.array
-        roll = int(len(wav_data_int) * np.random.randint(0, 10) * 0.1)     # shift from 0% ~ 90% in random.
+        roll = int(len(wav_data_int) * np.random.randint(0, 100) * 0.01)     # shift from 0% ~ 99% in random.
         wav_data_int = np.roll(wav_data_int, roll)
         return AudioSegment(data = bytes(wav_data_int),  \
-                            sample_width=2, frame_rate=16000, \
-                            channels=1)
+                            sample_width=wav_data.sample_width, frame_rate=wav_data.frame_rate, \
+                            channels=wav_data.channels)
 
     # Speed tuning
 

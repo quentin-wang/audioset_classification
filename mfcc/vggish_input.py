@@ -44,7 +44,7 @@ def waveform_to_examples(data, sample_rate):
     data = np.mean(data, axis=1)
   # Resample to the rate assumed by VGGish.
   if sample_rate != vggish_params.SAMPLE_RATE:
-    print('resample accured...')
+    print('sample_rate is {}, resample accured to {}'.format(sample_rate, vggish_params.SAMPLE_RATE))
     data = resampy.resample(data, sample_rate, vggish_params.SAMPLE_RATE)
 
   # Compute log mel spectrogram features.
