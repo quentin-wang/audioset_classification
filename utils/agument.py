@@ -1,11 +1,12 @@
-#coding=utf-8
+# coding=utf-8
 import sys, os
 import numpy as np
 from pydub import AudioSegment
 
 import argparse
-sys.path.insert(1, os.path.join(sys.path[0], '../'))
-from mfcc import _wavfile
+# sys.path.insert(1, os.path.join(sys.path[0], '../'))
+# from mfcc import _wavfile
+import soundfile
 from ctypes import *
 
 libc_so = {"darwin": "libc.dylib", "linux2": "", "linux": ""}[sys.platform]
@@ -59,7 +60,7 @@ class Agumentation(object):
             'shift': self.shift_sound,
             # 'denoise': self.denoise,
             }
-        # self.denoise_init(shm_cnt)
+        self.denoise_init(shm_cnt)
 
     # Background noise
     def white_noise(self, wav_data):
@@ -85,52 +86,52 @@ class Agumentation(object):
     # Speed tuning
 
     # Denoise
-    # def denoise_init(self, shm_cnt):
-    #     # assert shm_cnt <= 20, 'shm cnt is too large: {}'.format(shm_cnt)
+    def denoise_init(self, shm_cnt):
+        assert shm_cnt <= 20, 'shm cnt is too large: {}'.format(shm_cnt)
 
-    #     if (msgget(MSG_SHM_KEY, 0o666 | IPC_EXCL) < 0):    # not exsit, then create
-    #         msgid_shm = msgget(MSG_SHM_KEY, 0o666 | IPC_CREATE)
-    #         if msgid_shm < 0:
-    #             raise Exception("msgid_shm, system not infected")
+        if (msgget(MSG_SHM_KEY, 0o666 | IPC_EXCL) < 0):    # not exsit, then create
+            msgid_shm = msgget(MSG_SHM_KEY, 0o666 | IPC_CREATE)
+            if msgid_shm < 0:
+                raise Exception("msgid_shm, system not infected")
 
-    #         for ii in range(shm_cnt):
-    #             shmid = shmget((SHM_KEY + ii), SHM_SIZE, 0o666 | IPC_CREATE)    # 
-    #             if shmid < 0:
-    #                 raise Exception("shmget, system not infected")
+            for ii in range(shm_cnt):
+                shmid = shmget((SHM_KEY + ii), SHM_SIZE, 0o666 | IPC_CREATE)    # 
+                if shmid < 0:
+                    raise Exception("shmget, system not infected")
 
-    #             amsg = ipc_str_msg()
-    #             amsg.type = MSG_SHM_TYPE
-    #             amsg.id = (SHM_KEY + ii)
-    #             print('Denoise send amsg {}'.format(amsg.id))
-    #             msgsnd(msgid_shm, cast(byref(amsg), POINTER(c_byte)), sizeof(c_int), MSG_SHM_TYPE, 0)
+                amsg = ipc_str_msg()
+                amsg.type = MSG_SHM_TYPE
+                amsg.id = (SHM_KEY + ii)
+                print('Denoise send amsg {}'.format(amsg.id))
+                msgsnd(msgid_shm, cast(byref(amsg), POINTER(c_byte)), sizeof(c_int), MSG_SHM_TYPE, 0)
         
-    # def denoise(self, wav_data):
-    #     wav_data_int = np.frombuffer(wav_data.raw_data, dtype=np.int16)    # bytes to np.array
-    #     amsg = ipc_str_msg()
+    def denoise(self, wav_data):
+        wav_data_int = np.frombuffer(wav_data.raw_data, dtype=np.int16)    # bytes to np.array
+        amsg = ipc_str_msg()
 
-    #     msgid_shm = msgget(MSG_SHM_KEY, 0o666)
-    #     if msgid_shm < 0:
-    #         raise Exception("msgid_shm, system not infected")
-    #     ret = msgrcv(msgid_shm, cast(byref(amsg), POINTER(c_byte)), sizeof(c_int), MSG_SHM_TYPE, 0)
+        msgid_shm = msgget(MSG_SHM_KEY, 0o666)
+        if msgid_shm < 0:
+            raise Exception("msgid_shm, system not infected")
+        ret = msgrcv(msgid_shm, cast(byref(amsg), POINTER(c_byte)), sizeof(c_int), MSG_SHM_TYPE, 0)
         
-    #     print('get shm {}'.format(amsg.id))
-    #     # copy to shm mem
-    #     shmid = shmget(amsg.id, SHM_SIZE, 0o666)
-    #     if shmid < 0:
-    #         raise Exception("shmget, system not infected")
+        print('get shm {}'.format(amsg.id))
+        # copy to shm mem
+        shmid = shmget(amsg.id, SHM_SIZE, 0o666)
+        if shmid < 0:
+            raise Exception("shmget, system not infected")
 
-    #     shm_addr = shmat(shmid, None, 0)
-    #     wav_len = len(wav_data_int)
-    #     memcpy (shm_addr, wav_data_int.ctypes.data, wav_len)
-    #     # ret = os.system('./a.out {} {}'.format(amsg.id, wav_len))
-    #     memcpy (wav_data_int.ctypes.data, shm_addr, wav_len)
+        shm_addr = shmat(shmid, None, 0)
+        wav_len = len(wav_data_int)
+        memcpy (shm_addr, wav_data_int.ctypes.data, wav_len)
+        # ret = os.system('./a.out {} {}'.format(amsg.id, wav_len))
+        memcpy (wav_data_int.ctypes.data, shm_addr, wav_len)
 
-    #     shmdt(shm_addr)
-    #     msgsnd(msgid_shm, cast(byref(amsg), POINTER(c_byte)), sizeof(c_int), MSG_SHM_TYPE, 0) # return resource.
+        shmdt(shm_addr)
+        msgsnd(msgid_shm, cast(byref(amsg), POINTER(c_byte)), sizeof(c_int), MSG_SHM_TYPE, 0) # return resource.
 
-    #     return AudioSegment(data = bytes(wav_data_int),  \
-    #                         sample_width=2, frame_rate=16000, \
-    #                         channels=1)        
+        return AudioSegment(data = bytes(wav_data_int),  \
+                            sample_width=2, frame_rate=16000, \
+                            channels=1)        
 
 ##############################################################################
 
@@ -147,7 +148,7 @@ def _run2(data_dir):
         wav_data = aug.strategy['denoise'](wav_data)
 
         raw_wav_data = np.frombuffer(wav_data.raw_data, dtype=np.int16)
-        _wavfile.write(wav_file+'.agu.wav', 16000, raw_wav_data)
+        soundfile.write(wav_file+'.agu.wav', raw_wav_data, 16000)
 
 ##############################################################################
 
@@ -166,7 +167,7 @@ def _run(data_dir):
     for na in names:
         print(na)
         wav_file = data_dir + '/' + na
-        sr, wav_data = _wavfile.read(wav_file)
+        sr, wav_data = soundfile.read(wav_file)
         wav_len = len(wav_data) * 2         
         assert wav_len <= SHM_SIZE, 'wav_data is too large: %d' % wav_len
         memcpy (shmaddr, wav_data.ctypes.data, wav_len)
@@ -175,7 +176,7 @@ def _run(data_dir):
         #     print('a.out process error.')
         #     continue
         memcpy (wav_data.ctypes.data, shmaddr, wav_len)
-        _wavfile.write(wav_file+'.agu.wav', 16000, wav_data)
+        soundfile.write(wav_file+'.agu.wav', wav_data, 16000)
     
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Audio param')

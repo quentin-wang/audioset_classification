@@ -3,6 +3,7 @@ checkpoints_transfer/
 tblogs/
 work/
 __pycache__/
+.vscode/
 
 # file
 *.note.*

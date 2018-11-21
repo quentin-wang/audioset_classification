@@ -27,15 +27,15 @@
 # feature_log_epsilon = 1e-3
 # feature_power = 1           # power
 
-# # log mel size (240, 64)
-# feature_sr = 16000
-# feature_nfft = 1024
-# feature_win_len = feature_nfft
-# feature_hop_len = 660
-# feature_frames = 240        # 非独立参数，根据上面参数算得
-# feature_nb_mel_bands = 64
-# feature_log_epsilon = 1e-3
-# feature_power = 1           # power
+# log mel size (240, 64)
+feature_sr = 16000
+feature_nfft = 1024
+feature_win_len = feature_nfft
+feature_hop_len = 660
+feature_frames = 240        # 非独立参数，根据上面参数算得
+feature_nb_mel_bands = 64
+feature_log_epsilon = 1e-3
+feature_power = 1           # power
 
 # log mel size (240, 64)
 # feature_sr = 48000
@@ -47,15 +47,15 @@
 # feature_log_epsilon = 1e-3
 # feature_power = 1           # power
 
-# log mel size (384, 64)
-feature_sr = 16000
-feature_nfft = 1024
-feature_win_len = feature_nfft
-feature_hop_len = 415
-feature_frames = 384        # 非独立参数，根据上面参数算得
-feature_nb_mel_bands = 64
-feature_log_epsilon = 1e-3
-feature_power = 1           # power
+# # log mel size (384, 64)
+# feature_sr = 16000
+# feature_nfft = 1024
+# feature_win_len = feature_nfft
+# feature_hop_len = 415
+# feature_frames = 384        # 非独立参数，根据上面参数算得
+# feature_nb_mel_bands = 64
+# feature_log_epsilon = 1e-3
+# feature_power = 1           # power
 
 # # log mel size (240, 64)
 # feature_sr = 16000
@@ -67,10 +67,21 @@ feature_power = 1           # power
 # feature_log_epsilon = 1e-3
 # feature_power = 1           # power
 
+# # log mel size (240, 64)
+# feature_original_sr = 48000
+# feature_sr = 8000
+# feature_nfft = 512
+# feature_win_len = feature_nfft
+# feature_hop_len = 330
+# feature_frames = 240        # 非独立参数，根据上面参数算得
+# feature_nb_mel_bands = 64
+# feature_log_epsilon = 1e-3
+# feature_power = 1           # power
+
 BATCH_SIZE = 64
 TOTAL_NUM_CLASS = 527
-FILE_CLASS_LABELS = '/work/audio/audiosetdl/class_labels_indices.csv'
-DATA_DIR = '/work/audio/wav_path_features-{}'.format(feature_sr)
+FILE_CLASS_LABELS = '/work/audio/audiosetdl/stat.csv'
+DATA_DIR = '/work/audio/flac_path_features'
 
 path_q = 'path-{}'.format(feature_sr)
 logmel_q = 'logmel-{}'.format(feature_sr)

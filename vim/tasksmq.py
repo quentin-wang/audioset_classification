@@ -1,13 +1,15 @@
 # -*- coding:utf-8 -*-
 import sys, os
 import numpy as np
-from pydub import AudioSegment
+# from pydub import AudioSegment
 import librosa
+import soundfile
 import multiprocessing as mp
+import re
 
 sys.path.insert(1, os.path.join(sys.path[0], '../'))
 from mfcc import vggish_input as mfcc
-from utils import agument
+# from utils import agument
 import time
 import pika
 
@@ -21,7 +23,7 @@ except BaseException:
 import pandas as pd
 import vim_params as vp
 
-aug = agument.Agumentation(mp.cpu_count())
+# aug = agument.Agumentation(mp.cpu_count())
 
 def generate_batch(train_gen, ):
     print('run generate_batch ...')
@@ -48,9 +50,9 @@ def generate_batch(train_gen, ):
             time.sleep(0.2)
             q_len = q.method.message_count
 
-            if q_len > 400:
+            if q_len > 20:
                 print('path_q runs too fast, sleep.............................')
-                time.sleep(20)
+                time.sleep(5)
             
 def start_process():
     pass
@@ -77,36 +79,63 @@ def batch_wav_to_mfcc_parallel(x, y, agumentation = False):
     print('x_mfcc', x_mfcc.shape)
     return x_mfcc, y, x_len
 
+strinfo = re.compile('downloads_merge')
+def read_audio(path, target_fs=None):
+    if 'extra_sound' in path:      # extra audio
+        print(path)
+        (audio, fs) = soundfile.read(path)
+        if audio.ndim > 1:
+            audio = np.mean(audio, axis=1)
+        if target_fs is not None and fs != target_fs:
+            audio = librosa.resample(audio, orig_sr=fs, target_sr=target_fs)
+            fs = target_fs
+    else:
+        save_path = strinfo.sub('downloads-flac-{}'.format(target_fs), path)
+        if os.path.exists(save_path):       # after converted
+            (audio, fs) = soundfile.read(save_path)
+        else:   # need to be converted
+            print(save_path, 'is not exist!!!')
+            (audio, fs) = soundfile.read(path)
+            if audio.ndim > 1:
+                audio = np.mean(audio, axis=1)
+            if target_fs is not None and fs != target_fs:
+                audio = librosa.resample(audio, orig_sr=fs, target_sr=target_fs)
+                fs = target_fs
+            # save 
+            try:
+                soundfile.write(save_path, audio, fs)
+            except Exception as e:
+                print(e)
+                newpath = os.path.dirname(save_path)
+                if not os.path.exists(newpath):
+                    print(newpath, "is not exist. ")
+                    os.makedirs(newpath, mode=0o755)
+                soundfile.write(save_path, audio, fs)
+    return audio, fs
 
 def wav_to_mfcc(ax, agumentation=False):
 
     # sr, wav_data = _wavfile.read(str(ax,'utf-8'))
     # assert sr == 16000, 'Bad sample: {}'.format(sr)
     axs = str(ax,'utf-8')
-    wav_data = AudioSegment.from_wav(axs)
-
+    (audio, sr) = read_audio(axs, target_fs=vp.feature_sr)      # wav and flac
+    
     if agumentation:
         # 50 % to execute white noise
         if (np.random.randint(0, 2) == 0):
-            wav_data = aug.strategy['wn'](wav_data)
-
+            NOISE_POWER = 200
+            wn = (np.random.randint(-NOISE_POWER, NOISE_POWER, size=len(audio))) / 32768
+            audio += wn
+    
         # 50 % to execute volume
-        # if (np.random.randint(0, 2) == 0):
-        #     wav_data = aug.strategy['volume'](wav_data)
-
+        
         # 50 % to execute shift
         if (np.random.randint(0, 2) == 0):
-            wav_data = aug.strategy['shift'](wav_data)
-
-    raw_wav_data = np.frombuffer(wav_data.raw_data, dtype=np.int16)
+            roll = int(len(audio) * np.random.randint(0, 1000) * 0.001)     # shift from 0% ~ 99% in random.
+            audio = np.roll(audio, roll)
 
     try:
-        assert wav_data.frame_rate == vp.feature_sr, 'Bad sample type: %r' % wav_data.frame_rate
-
-        # if vp.feature_sr == 16000:
-        #     amfcc = mfcc.waveform_to_examples(raw_wav_data / 32768.0, wav_data.frame_rate)
-        # elif vp.feature_sr == 44100:
-        amfcc = np.log(librosa.feature.melspectrogram(raw_wav_data / 32768.0, 
+        amfcc = np.log(librosa.feature.melspectrogram(audio,  # / 32768.0
             sr=vp.feature_sr, n_mels=vp.feature_nb_mel_bands, 
             n_fft=vp.feature_nfft, hop_length=vp.feature_hop_len, 
             power=vp.feature_power) + vp.feature_log_epsilon)
@@ -151,15 +180,25 @@ def wav_to_mfcc(ax, agumentation=False):
 #     raw_wav_data = np.frombuffer(wav_data.raw_data, dtype=np.int16)
 
 #     try:
-#         amfcc = mfcc.waveform_to_examples(raw_wav_data / 32768.0, 16000)
+#         assert wav_data.frame_rate == vp.feature_sr, 'Bad sample type: %r' % wav_data.frame_rate
+
+#         # if vp.feature_sr == 16000:
+#         #     amfcc = mfcc.waveform_to_examples(raw_wav_data / 32768.0, wav_data.frame_rate)
+#         # elif vp.feature_sr == 44100:
+#         amfcc = np.log(librosa.feature.melspectrogram(raw_wav_data / 32768.0, 
+#             sr=vp.feature_sr, n_mels=vp.feature_nb_mel_bands, 
+#             n_fft=vp.feature_nfft, hop_length=vp.feature_hop_len, 
+#             power=vp.feature_power) + vp.feature_log_epsilon)
+#         amfcc = amfcc.T
+#         # print('amfcc.shape ', amfcc.shape)
+
 #         alen = amfcc.shape[0]
-#         if (alen < 240):
-#             # amfcc = np.concatenate((amfcc, amfcc[:(240 - alen)]), axis=0)  # pad zeros
-#             amfcc = np.concatenate((amfcc, np.zeros(shape=((240 - alen), amfcc.shape[1]))), axis=0)
+#         if (alen < vp.feature_frames):
+#             amfcc = np.concatenate((amfcc, np.zeros(shape=((vp.feature_frames - alen), amfcc.shape[1]))), axis=0)
             
-#         elif (alen > 240):
-#             alen = 240
-#             amfcc = amfcc[:240]
+#         elif (alen > vp.feature_frames):
+#             alen = vp.feature_frames
+#             amfcc = amfcc[:vp.feature_frames]
 
 #     except Exception as e:
 #         print(axs)
@@ -174,8 +213,8 @@ if __name__ == '__main__':
 
     df = pd.read_csv(vp.FILE_CLASS_LABELS)
     labels_dict = {}
-    labels_dict['name'] = np.array(df[df['train'] == 1]['display_name'])
-    labels_dict['id'] = np.array(df[df['train'] == 1]['index'])
+    labels_dict['name'] = np.array(df[df['train100'] == 1]['display_name'])
+    labels_dict['id'] = np.array(df[df['train100'] == 1]['index'])
     labels_dict['count'] = []
 
     train_x = []

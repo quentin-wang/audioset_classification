@@ -257,18 +257,19 @@ def train(args):
     model = Model(input_logmel, out)
 
     # del model
-    # # load json and create model
-
+    # load h5 model
     # save_out_path = os.path.join(
     #     models_dir, "md_{}_iters.h5".format(18000))
     # model = load_model(save_out_path)
 
-    # # json_file = open(save_out_path + '.json', 'r')
-    # # loaded_model_json = json_file.read()
-    # # json_file.close()
-    # # model = model_from_json(loaded_model_json)
-    # # # load weights into new model
-    # # model.load_weights(save_out_path + '.weights.h5')
+    # load json and create model
+    # save_out_path = os.path.join(
+    #     models_dir, "model.{}".format(1500))
+    # json_file = open(save_out_path + '.json', 'r')
+    # loaded_model_json = json_file.read()
+    # json_file.close()
+    # model = model_from_json(loaded_model_json)
+    # model.load_weights(save_out_path + '.weights.h5')    # load weights into new model
     # print("Loaded model from disk")
 
     model.summary()
